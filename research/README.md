@@ -17,6 +17,7 @@ index that list.
 | [02-preference-and-scope.md](02-preference-and-scope.md) | Preference storage as a distinct artifact, scope as a retrieval filter, per-agent memory under Telegram routing |
 | [03-cost-and-caching.md](03-cost-and-caching.md) | Prompt-cache economics for the three providers, prefix layout, local inference and embeddings |
 | [04-privacy-eval-and-reference-architecture.md](04-privacy-eval-and-reference-architecture.md) | Provenance, poisoning, deletion limits, evaluation method, the concrete architecture |
+| [07-cjk-retrieval-notes.md](07-cjk-retrieval-notes.md) | Measured behaviour of FTS5 on Chinese text, and what it changes about the free tier |
 
 ## Recommendation in brief
 
@@ -63,6 +64,22 @@ The vector store is the archive underneath, not the brain of the system.
 - **Preferences 同 memories 係唔同嘅嘢。** 用 `<!-- observed: DATE | status: active -->`
   格式寫成祈使句，改用時原地 supersede，唔好 append。
   否則模型會繼續用舊嗰個值答你。
+
+## 實測之後改咗嘅一點
+
+`research/07-cjk-retrieval-notes.md` 係用真實廣東話筆記跑出嚟嘅實測結果，
+改咗免費層嘅定位：
+
+- FTS5 預設 `unicode61` 分詞器處理中文基本上係壞嘅，**一定要改用 `trigram`**。
+- `trigram` 最低要三個字連續先 match 到。所以「瑜伽」「阿黑」「大阪」呢類
+  兩字詞**查唔到**，而且**同義改寫一定查唔到** —— 免費層其實係「逐字檢索」，
+  唔係「記憶」。
+- 結論：筆記要用**用戶講嘅語言**寫（呢個測試 persona 嘅筆記就係用廣東話寫），
+  而且每個事實唔可以淨係靠兩字詞留住，要擺喺 longer phrase 入面
+  （`佢叫阿黑` 而唔係 `阿黑`）。
+- 所以對講廣東話嘅人，local embedding 唔係「遲啲先加」，而係**必需**。
+  測試集已經用 `as_written` / `paraphrased` 配對記低咗呢個界線，
+  開咗 embedding 之後 paraphrase 個啲 case 應該即刻開始 pass。
 
 ## Status
 

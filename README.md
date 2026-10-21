@@ -29,11 +29,21 @@ asuka-agent/
 ├── .gitignore                 # global ignore rules (secrets, caches, venvs…)
 ├── README.md
 ├── config/
-│   └── config.yaml            # runtime configuration (API keys, bot tokens)
+│   ├── config.yaml            # runtime configuration (API keys, bot tokens)
+│   ├── openclaw.json5         # memory, agents, Telegram routing, providers
+│   └── system-prompt.md       # the cacheable prefix, and what must stay out of it
+├── templates/
+│   ├── USER.md                # the user profile contract, to be hand-edited
+│   └── MEMORY.md              # the durable fact contract
+├── tests/
+│   └── personal/              # synthetic persona + seeded workspace + test set
+│       ├── persona.md
+│       ├── testset.yaml
+│       └── verify-index.py    # runnable, no dependencies
 ├── research/                  # 📚 design research, with sources
 │   ├── README.md              #    index + 中文摘要
 │   ├── report.md              #    full synthesis
-│   └── 01..05                 #    deep dives: architecture, preferences, cost…
+│   └── 01..07                 #    deep dives
 └── private-folder/            # ⛔ PRIVATE — structure tracked, contents never
     ├── .gitignore             #    ignores everything inside this folder
     ├── skills/                #    custom skills the agent can load
@@ -146,6 +156,27 @@ MiniMax, Kimi and OpenAI. Every claim is traced to a source, listed in
 
 Start with [`research/README.md`](research/README.md) for the index and a
 Chinese summary.
+
+## Memory system
+
+The current build targets the **free tier**: keyword-only FTS5 search, no
+embedding provider, no outbound calls for memory operations.
+
+```
+python3 tests/personal/verify-index.py
+```
+
+runs the index checks against a seeded persona workspace. No dependencies.
+
+Two things to know before writing any memory notes:
+
+- The FTS tokenizer is set to `trigram`. The default `unicode61` tokenizer
+  treats a run of Chinese characters as one token and cannot serve a Chinese
+  corpus. See [`research/07-cjk-retrieval-notes.md`](research/07-cjk-retrieval-notes.md).
+- A trigram index matches only a contiguous run of three or more characters
+  shared between the query and the note. Two-character Cantonese words and
+  paraphrased questions do not match, so notes are written in the user's
+  language with each fact anchored inside a longer phrase.
 
 ---
 

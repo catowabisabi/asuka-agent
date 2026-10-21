@@ -1,0 +1,205 @@
+// =============================================================================
+//  asuka-agent — OpenClaw runtime configuration
+// -----------------------------------------------------------------------------
+//  Environment variables are referenced with ${VAR} expansion, the same syntax
+//  OpenClaw itself uses for provider credentials. Nothing secret lives in this
+//  file.
+//
+//  This configuration targets the FREE memory tier: keyword-only FTS5 search,
+//  no embedding provider, no outbound calls for memory operations.
+// =============================================================================
+
+{
+  // ---------------------------------------------------------------------------
+  //  Memory
+  // ---------------------------------------------------------------------------
+  memory: {
+    search: {
+      // "none" = FTS5 keyword search only. No embedding API, no egress, no
+      // cost. This is also the fallback OpenClaw uses when no embedding
+      // provider is configured, so it is the default state, not a downgrade.
+      provider: "none",
+      fallback: "none",
+
+      store: {
+        fts: {
+          // REQUIRED for a Chinese or Cantonese corpus.
+          //
+          // The default unicode61 tokenizer treats a run of CJK characters as
+          // ONE token, so a search for a Chinese word cannot match. Measured on
+          // SQLite 3.40.1: unicode61 returned zero hits for every Chinese
+          // query tried, while trigram matched every 3+ character term.
+          //
+          // trigram turns a 3+ character term into a substring search, which is
+          // the behaviour a Chinese corpus needs. Terms shorter than three
+          // characters cannot match at the raw FTS5 layer, so notes are
+          // written with the key concept inside a longer phrase ("瑜伽課",
+          // not "瑜伽"). See tests/personal/README.md.
+          tokenizer: "trigram",
+        },
+        vector: {
+          // Off while the embedding provider is "none". Turn this on together
+          // with memory.search.provider when moving to a local embedding model.
+          enabled: false,
+        },
+      },
+
+      // Index both the curated memory files and the session transcripts, so a
+      // question about something discussed but never promoted is still
+      // answerable.
+      sources: ["memory", "sessions"],
+    },
+
+    citations: "auto",
+  },
+
+  // ---------------------------------------------------------------------------
+  //  Agents
+  //
+  //  One agent is one brain: its own workspace, its own state directory, its
+  //  own memory index. Each Telegram account is bound to exactly one agent.
+  // ---------------------------------------------------------------------------
+  agents: {
+    defaults: {
+      model: { primary: "minimax/MiniMax-M3" },
+      // The bootstrap budget is the ceiling for the always-injected block.
+      // USER.md is additionally capped at 4,000 characters, which configuration
+      // can lower but never raise.
+      bootstrapMaxChars: 15000,
+      bootstrapTotalMaxChars: 40000,
+    },
+    entries: {
+      // The orchestrator. Talks to the user, holds the global profile, and
+      // dispatches to the workers.
+      asuka: {
+        workspace: "~/.openclaw/workspace",
+        memory: {
+          search: {
+            // Let this agent recall across its own private conversations.
+            rememberAcrossConversations: true,
+          },
+        },
+      },
+
+      // A worker. Isolated memory index, no access to the orchestrator's
+      // transcripts.
+      "worker-research": {
+        workspace: "~/.openclaw/workers/research",
+        memory: {
+          search: {
+            rememberAcrossConversations: true,
+          },
+        },
+      },
+    },
+  },
+
+  // ---------------------------------------------------------------------------
+  //  Telegram
+  //
+  //  The manager bot and each worker bot are separate accounts, each bound to
+  //  its own agent. The channel-root allowFrom is the access boundary: an
+  //  account-level wildcard cannot widen it, because the merged effective
+  //  allowlist must still contain an explicit wildcard to do so.
+  // ---------------------------------------------------------------------------
+  channels: {
+    telegram: {
+      enabled: true,
+
+      // "allowlist" requires at least one sender ID. An empty allowFrom is
+      // rejected by config validation, so this fails loudly rather than
+      // opening the bot to the world.
+      dmPolicy: "allowlist",
+      allowFrom: ["${TELEGRAM_ALLOWED_USER_ID}"],
+
+      // Groups stay closed by default. Open them deliberately, per group.
+      groupPolicy: "allowlist",
+      groupAllowFrom: ["${TELEGRAM_ALLOWED_USER_ID}"],
+
+      accounts: {
+        // The manager bot: the control surface the user talks to.
+        manager: {
+          botToken: "${TELEGRAM_MANAGER_BOT_TOKEN}",
+          // No account-level allowFrom here on purpose. Each account inherits
+          // the channel-root list, so a permissive account cannot be added by
+          // accident.
+        },
+
+        // Worker bots, one per agent.
+        research: {
+          botToken: "${TELEGRAM_WORKER_BOT_TOKEN_1}",
+        },
+      },
+    },
+  },
+
+  // ---------------------------------------------------------------------------
+  //  Routing
+  //
+  //  Most specific match wins. Traffic that matches no binding is left
+  // undispatched rather than given to an arbitrary agent, so every account
+  // needs an explicit owner.
+  // ---------------------------------------------------------------------------
+  bindings: [
+    { agentId: "asuka", match: { channel: "telegram", accountId: "manager" } },
+    { agentId: "worker-research", match: { channel: "telegram", accountId: "research" } },
+  ],
+
+  // ---------------------------------------------------------------------------
+  //  Model providers
+  //
+  //  Rates per million tokens, October 2026. Kimi K3 input costs ten times
+  //  MiniMax M3, so the cheap model carries the memory-heavy turns.
+  //
+  //    MiniMax M3      $0.30 input  $1.20 output  $0.06 cache read
+  //    Kimi K3         $3.00 input  $15.00 output $0.30 cache read
+  //    Kimi K3 cache write  $3.00 for a 5 minute TTL, $6.00 for 1 hour
+  // ---------------------------------------------------------------------------
+  models: {
+    mode: "merge",
+    providers: {
+      minimax: {
+        baseUrl: "https://api.minimax.io/v1",
+        apiKey: "${MINIMAX_API_KEY}",
+        api: "openai-completions",
+        models: [{ id: "MiniMax-M3", name: "MiniMax M3" }],
+      },
+      moonshot: {
+        baseUrl: "https://api.moonshot.ai/v1",
+        apiKey: "${MOONSHOT_API_KEY}",
+        api: "openai-completions",
+        models: [
+          { id: "kimi-k3", name: "Kimi K3" },
+          { id: "kimi-k2.6", name: "Kimi K2.6" },
+        ],
+      },
+      openai: {
+        baseUrl: "https://api.openai.com/v1",
+        apiKey: "${OPENAI_API_KEY}",
+        api: "openai-responses",
+        models: [{ id: "gpt-5.6", name: "GPT-5.6" }],
+      },
+    },
+  },
+
+  // ---------------------------------------------------------------------------
+  //  Plugins
+  // ---------------------------------------------------------------------------
+  plugins: {
+    slots: {
+      memory: "memory-core",
+    },
+    entries: {
+      "memory-core": {
+        enabled: true,
+        config: {
+          dreaming: {
+            // The consolidation pass is the single writer to the curated tier.
+            // It runs in the background, off the reply path.
+            enabled: true,
+          },
+        },
+      },
+    },
+  },
+}

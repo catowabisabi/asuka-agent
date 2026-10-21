@@ -1,0 +1,283 @@
+# Personal memory test set
+#
+#   python3 tests/personal/verify-index.py
+#
+# Two kinds of case live in this file.
+#
+# Retrieval cases carry a must_hit or must_miss key and are checked by the
+# script. Behavioural cases carry directive, required or forbidden keys and
+# need a live agent session.
+#
+# The retrieval cases come in pairs, and the pairing is the point. A trigram
+# index matches a query only when a contiguous run of three or more characters
+# appears in both the query and the note. So every fact is tested twice: once
+# as_written, using a phrase the note actually contains, and once paraphrased,
+# using the wording a person would naturally reach for.
+#
+#   as_written   must pass now
+#   paraphrased  must fail now, and must start passing the moment a local
+#                embedding provider is added
+#
+# The paraphrased cases are the upgrade signal. If one of them starts passing
+# for the wrong reason, or keeps failing after embeddings are switched on, the
+# free-tier claim in research/03-cost-and-caching.md is out of date.
+#
+# scope:
+#   asuka    the orchestrator agent, workspace/             holds the global profile
+#   worker   the research agent, workspace-worker-research/  holds isolated memory
+
+meta:
+  persona: tests/personal/persona.md
+  workspace: tests/personal/workspace
+  worker_workspace: tests/personal/workspace-worker-research
+  tokenizer: trigram
+  provider: none
+  seeded_on: 2026-10-21
+  min_term_length: 3
+
+# ---------------------------------------------------------------------------
+#  Retrieval cases
+# ---------------------------------------------------------------------------
+
+retrieval:
+
+  - id: fts-aswritten-01
+    scope: asuka
+    fact: Occupation and workplace
+    as_written: "做會計"
+    must_hit: "做會計"
+    notes: "Three characters, contiguous in MEMORY.md. This is the regime the free tier can serve."
+
+  - id: fts-paraphrase-02
+    scope: asuka
+    fact: Occupation and workplace
+    paraphrased: "我喺邊度返工㗎"
+    must_miss: "我喺邊度返工㗎"
+    notes: "Natural Cantonese, zero contiguous overlap with the note. Expected to fail on the free tier, expected to pass with embeddings."
+
+  - id: fts-aswritten-03
+    scope: asuka
+    fact: Yoga class
+    as_written: "瑜伽課"
+    must_hit: "瑜伽課"
+    notes: "Also present in the daily note, so this checks the curated and episodic tiers both index."
+
+  - id: fts-paraphrase-04
+    scope: asuka
+    fact: Yoga class
+    paraphrased: "我今日朝早做咗咩運動"
+    must_miss: "我今日朝早做咗咩運動"
+    notes: "The user's own words for the activity. The note says 瑜伽課, the user says 運動. This is the case embeddings exist to solve."
+
+  - id: fts-aswritten-05
+    scope: asuka
+    fact: The cat
+    as_written: "佢叫阿黑"
+    must_hit: "佢叫阿黑"
+    notes: "A two-character proper noun is unmatchable on its own. Anchored inside a longer phrase it works."
+
+  - id: fts-paraphrase-06
+    scope: asuka
+    fact: The cat
+    paraphrased: "我隻貓叫咩名"
+    must_miss: "我隻貓叫咩名"
+    notes: "The name appears in the note, the question asks for the name, and retrieval still fails because the question is not a contiguous phrase in the note."
+
+  - id: fts-shortterm-07
+    scope: asuka
+    fact: Short term floor
+    as_written: "瑜伽"
+    must_miss: "瑜伽"
+    notes: "Two characters. No trigram can be formed, so no match is possible at the raw FTS5 layer."
+
+  - id: fts-aswritten-08
+    scope: asuka
+    fact: Monthly spending
+    as_written: "每月開支"
+    must_hit: "每月開支"
+    notes: "Four characters, contiguous."
+
+  - id: fts-aswritten-09
+    scope: asuka
+    fact: Coffee order
+    as_written: "flat white"
+    must_hit: "flat white"
+    notes: "ASCII behaves as expected. The mixed-script and ASCII paths are not the problem."
+
+  - id: fts-aswritten-10
+    scope: asuka
+    fact: Osaka trip
+    as_written: "去大阪"
+    must_hit: "去大阪"
+    notes: "Contiguous in the daily note, and includes the departure date and duration that a profile directive requires the reply to carry."
+
+  - id: scope-worker-11
+    scope: worker
+    fact: Worker-private note
+    as_written: "南海鐵路"
+    must_hit: "南海鐵路"
+    notes: "Four characters in the worker's own workspace. The worker can read it."
+
+  - id: scope-cross-12
+    scope: asuka
+    fact: Worker-private note
+    as_written: "南海鐵路"
+    must_miss: "南海鐵路"
+    notes: "The same term, in the orchestrator's index, must not appear. Since the QMD backend was retired in v2026.8.1, built-in memory does not search another agent's corpus. This catches any regression that re-enables cross-agent search."
+
+# ---------------------------------------------------------------------------
+#  Behavioural cases
+#
+#  These need a live agent session. They are the ones that check whether a
+#  directive was applied to a reply, rather than whether a fact was found.
+# ---------------------------------------------------------------------------
+
+behavioural:
+
+  - id: pref-language-01
+    category: preference
+    scope: asuka
+    prompt: "Summarise my day for me."
+    directive: "Always reply in Traditional Chinese, keeping English for financial and technical terms."
+    required:
+      - "reply body in Traditional Chinese"
+    forbidden:
+      - "an English-only reply"
+    notes: "The prompt is in English, so a model may follow the prompt language instead of the profile. The directive wins."
+
+  - id: pref-preamble-02
+    category: preference
+    scope: asuka
+    prompt: "我今日做咗啲咩?"
+    directive: "Never open a reply with a preamble or a restatement of the question."
+    forbidden:
+      - "a first line that restates the question"
+      - "an opening like 根據你嘅問題 or 好嘅"
+    required:
+      - "the substantive content on the first line"
+    notes: "Preamble stripping is the most reliable signal that a profile is actually being injected."
+
+  - id: pref-action-first-03
+    category: preference
+    scope: asuka
+    prompt: "Plan my Saturday."
+    directive: "Prefer action items first, then supporting detail."
+    required:
+      - "a recommendation or action before the supporting reasoning"
+    notes: "Checks ordering, not presence. A reply that ends with the action still fails."
+
+  - id: pref-no-emoji-04
+    category: preference
+    scope: asuka
+    prompt: "Write an email to a client about the audit timetable."
+    directive: "Never use emoji in client-facing deliverables."
+    forbidden:
+      - "any emoji character"
+    required:
+      - "client-appropriate register"
+    notes: "Negative case for a rule that is easy to over-apply in the other direction."
+
+  - id: pref-emoji-ok-05
+    category: preference
+    scope: asuka
+    prompt: "Remind me what I did this morning."
+    directive: "Never use emoji in client-facing deliverables."
+    required:
+      - "a personal, conversational register"
+    forbidden:
+      - "refusing the message because emoji rules exist"
+    notes: "A negative control. A profile applied too literally produces stiff, over-cautious replies."
+
+  - id: supersede-06
+    category: supersede
+    scope: asuka
+    prompt: "How do I set up the monthly reconciliation?"
+    directive: "Prefer concise summaries over step-by-step explanations."
+    forbidden:
+      - "step-by-step instructions"
+      - "an explanation framed as a detailed walkthrough"
+    required:
+      - "a summary"
+    notes: "The superseded directive sits immediately above the active one. The model must read the status field, not just notice that a directive exists."
+
+  - id: missing-budget-07
+    category: missing
+    scope: asuka
+    prompt: "我这个月 budget 係几多?"
+    forbidden:
+      - "a specific budget figure"
+      - "an estimate"
+    required:
+      - "one specific question asking for the figure"
+    notes: "The monthly budget is absent from every file. The correct behaviour is a question. A model that answers here is hallucinating, not being helpful."
+
+  - id: missing-hotel-08
+    category: missing
+    scope: asuka
+    prompt: "我大阪嘅酒店係邊間?"
+    forbidden:
+      - "a named hotel"
+    required:
+      - "a statement that it is not recorded"
+    notes: "The trip is booked but the hotel is not. Recall must not invent it."
+
+  - id: calc-basis-09
+    category: preference
+    scope: asuka
+    prompt: "If the Osaka flight is 2,400 HKD and the hotel is 900 HKD a night for 5 nights, what is the total?"
+    directive: "Always show the calculation basis for any financial figure."
+    required:
+      - "the arithmetic shown, 2400 + 900 x 5"
+      - "the total, 6900 HKD"
+    notes: "Checks the directive on a figure computed in the reply, not a recalled one."
+
+  - id: recall-with-basis-10
+    category: preference
+    scope: asuka
+    prompt: "我大阪嘅 trip 要飛幾耐?"
+    directive: "Always include the departure date and the trip length when discussing travel."
+    required:
+      - "2026-11-20"
+      - "five days"
+    notes: "Combines a retrieval with a directive, so it fails if either the recall or the profile is missing."
+
+  - id: cheap-option-11
+    category: preference
+    scope: asuka
+    prompt: "Recommend a hotel in Osaka for my trip."
+    directive: "Prefer the cheapest option when a recommendation involves spending."
+    required:
+      - "the cheapest option, or a question about the budget"
+    forbidden:
+      - "a premium recommendation as the only option"
+    notes: "The budget is unknown, so the correct answer is a cheap default or a question, not a luxury pick."
+
+  - id: no-reask-12
+    category: preference
+    scope: asuka
+    prompt: "幫我睇下我上次 trip 去咗邊?"
+    directive: "Never re-ask for information already recorded in memory."
+    required:
+      - "the trip retrieved from memory"
+    forbidden:
+      - "a question asking which trip is meant"
+    notes: "The trip history is in MEMORY.md, and the trigger 去過邊 is three characters, so the prefilter can fire."
+
+  - id: scope-refusal-13
+    category: scope
+    scope: asuka
+    prompt: "What is in the Osaka research brief?"
+    forbidden:
+      - "the airport train fare"
+      - "970 yen"
+    required:
+      - "a statement that the note is not in this agent's memory"
+    notes: "The orchestrator must not see the worker's private memory, and must say so rather than inventing."
+
+  - id: prefix-stability-14
+    category: cost
+    scope: asuka
+    prompt: "Any message at all."
+    required:
+      - "an unchanged prefix across turns"
+    notes: "Not a behavioural check but a measurement. Compare the rendered request between two consecutive turns: the tool list, identity, directives, USER.md and MEMORY.md blocks must be byte identical, and only the tail may differ."

@@ -134,6 +134,39 @@ created [38]. The `ollama` and `local` adapters accept a local model, and
 OpenClaw's bundled local default is an `embeddinggemma-300m` quantised GGUF
 [36].
 
+## The tokenizer, and what keyword search is actually worth
+
+The keyword-only tier is not a neutral placeholder. Measured on SQLite 3.40.1
+against Cantonese notes, the default `unicode61` tokenizer matches a query only
+when the query equals a complete run of CJK characters, so recall depends on
+where punctuation happens to fall in the note. The `trigram` tokenizer matches
+any contiguous run of three or more characters.
+
+The consequence is sharper than it first appears. A trigram match needs the
+same characters, next to each other, in the same order, in both the query and
+the note. Two-character Cantonese words cannot be matched at all, and a
+paraphrase cannot be matched at all. The keyword tier gives literal string
+retrieval rather than memory.
+
+For a Cantonese-speaking user that makes the embedding tier a requirement
+rather than an optional upgrade, because a question phrased differently from
+the note will not find it. The full measurement, the authoring rules that
+follow from it, and the test set that encodes the limit are in
+[07-cjk-retrieval-notes.md](07-cjk-retrieval-notes.md).
+
+The setting is one line:
+
+```json5
+{
+  memory: {
+    search: {
+      provider: "none",
+      store: { fts: { tokenizer: "trigram" } },
+    },
+  },
+}
+```
+
 ## Local inference as the extraction tier
 
 The expensive part of any memory system is the extraction pass that decides what
