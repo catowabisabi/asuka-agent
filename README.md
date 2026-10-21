@@ -30,6 +30,10 @@ asuka-agent/
 ├── README.md
 ├── config/
 │   └── config.yaml            # runtime configuration (API keys, bot tokens)
+├── research/                  # 📚 design research, with sources
+│   ├── README.md              #    index + 中文摘要
+│   ├── report.md              #    full synthesis
+│   └── 01..05                 #    deep dives: architecture, preferences, cost…
 └── private-folder/            # ⛔ PRIVATE — structure tracked, contents never
     ├── .gitignore             #    ignores everything inside this folder
     ├── skills/                #    custom skills the agent can load
@@ -129,6 +133,19 @@ numeric ID. Add it to `allowed_user_id`. Everyone else is ignored.
 - [ ] Rotate any token that was ever pasted into a public file.
 - [ ] Keep `allowed_user_id` tight — it is the only thing standing between
       a stranger and your agent.
+
+---
+
+## Research
+
+The [`research/`](research/) folder holds the design work behind the memory
+layer: which memory architecture to run, how preferences are stored, how memory
+is scoped per agent, and what the prompt-cache economics look like across
+MiniMax, Kimi and OpenAI. Every claim is traced to a source, listed in
+[`research/05-sources.md`](research/05-sources.md).
+
+Start with [`research/README.md`](research/README.md) for the index and a
+Chinese summary.
 
 ---
 
