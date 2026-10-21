@@ -54,6 +54,46 @@
   },
 
   // ---------------------------------------------------------------------------
+  //  Skills
+  //
+  //  The memory commands are a skill, not a plugin. It is loaded from the
+  //  repository checkout, so the source of truth is version controlled and the
+  //  installed copy is always the one that was reviewed.
+  //
+  //  The skill is user-invocable, so OpenClaw registers it as a slash command
+  //  named after the skill, sanitised to a-z0-9_:
+  //
+  //      /memory_commands 記住我唔食辣
+  //
+  //  It appears in the Telegram command menu automatically. No custom command
+  //  entries are declared for it: a custom entry is a menu row only, it does
+  //  not implement behaviour, and a row that does nothing when tapped is
+  //  worse than no row.
+  // ---------------------------------------------------------------------------
+  skills: {
+    load: {
+      // Absolute path to this repository's skills directory.
+      extraDirs: ["/path/to/asuka-agent/skills"],
+    },
+  },
+
+  // ---------------------------------------------------------------------------
+  //  Commands
+  // ---------------------------------------------------------------------------
+  commands: {
+    // "auto" registers skill commands natively on Telegram and Discord.
+    native: "auto",
+    nativeSkills: "auto",
+
+    // Owner-only commands and exec approvals need an explicit operator
+    // account. The value must resolve to the prefixed form, for example
+    // "telegram:123456789", matching the format used in the access control
+    // documentation. Check that the prefix survives expansion in this
+    // deployment before relying on it.
+    ownerAllowFrom: ["telegram:${TELEGRAM_ALLOWED_USER_ID}"],
+  },
+
+  // ---------------------------------------------------------------------------
   //  Agents
   //
   //  One agent is one brain: its own workspace, its own state directory, its
@@ -67,6 +107,9 @@
       // can lower but never raise.
       bootstrapMaxChars: 15000,
       bootstrapTotalMaxChars: 40000,
+      // Shared skill baseline. Both agents get the memory commands; a
+      // per-agent entry replaces this list rather than merging with it.
+      skills: ["memory-commands"],
     },
     entries: {
       // The orchestrator. Talks to the user, holds the global profile, and

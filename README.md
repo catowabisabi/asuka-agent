@@ -32,6 +32,9 @@ asuka-agent/
 │   ├── config.yaml            # runtime configuration (API keys, bot tokens)
 │   ├── openclaw.json5         # memory, agents, Telegram routing, providers
 │   └── system-prompt.md       # the cacheable prefix, and what must stay out of it
+├── skills/
+│   ├── README.md              # how skills are installed and verified
+│   └── memory-commands/       # 記住 / 搵返 / 唔好記 / 記憶摘要
 ├── templates/
 │   ├── USER.md                # the user profile contract, to be hand-edited
 │   └── MEMORY.md              # the durable fact contract
