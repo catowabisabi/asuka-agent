@@ -1,0 +1,22 @@
+# ============================================================
+#  private-folder — contents are PRIVATE
+#
+#  The folder structure below is committed to the public repo so
+#  the layout is visible, but every file inside it is ignored.
+#  Nothing you drop in here will ever be pushed to GitHub.
+#
+#  Rule order matters: the last matching pattern wins, so we
+#  ignore everything first, then re-allow the structure.
+# ============================================================
+
+# 1. Ignore everything in this folder
+*
+
+# 2. ...except this .gitignore file itself
+!.gitignore
+
+# 3. ...except the subdirectories (skills / tools / references)
+!*/
+
+# 4. ...except the .gitkeep placeholders that hold the empty dirs in git
+!.gitkeep

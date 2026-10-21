@@ -1,0 +1,58 @@
+# ============================================================
+#  Asuka Agent — configuration
+# ------------------------------------------------------------
+#  Values in ${ENV_VAR} form are resolved from the environment
+#  at runtime. This repo is PUBLIC, so never inline a real API
+#  key or bot token here — keep them in your environment or in
+#  an untracked file (config/config.local.yaml, already ignored).
+#
+#  To start:  cp config/config.yaml config/config.local.yaml
+#              and fill in the values, then export them as env vars.
+# ============================================================
+
+# ------------------------------------------------------------
+#  Agent runtime
+#  Credentials + endpoints for the model providers the agent
+#  can route work to.
+# ------------------------------------------------------------
+agents:
+  # --- Provider API keys (single value each) ---
+  openai_api_key: "${OPENAI_API_KEY}"
+  kimi_api_key: "${KIMI_API_KEY}"
+  minimax_api_key: "${MINIMAX_API_KEY}"
+
+  # Optional per-provider tuning — uncomment and edit as needed.
+  # openai_model: "gpt-4o"
+  # kimi_model: "moonshot-v1-128k"
+  # kimi_base_url: "https://api.moonshot.cn/v1"
+  # minimax_model: "abab6.5s-chat"
+  # minimax_base_url: "https://api.minimax.chat/v1"
+
+  # --- Telegram bot tokens, one per agent instance ---
+  # A LIST: register several bots and run several agents side by
+  # side, each reachable at its own @bot_username.
+  telegram_bot_token:
+    - "${TELEGRAM_BOT_TOKEN_1}"
+    - "${TELEGRAM_BOT_TOKEN_2}"
+    # - "${TELEGRAM_BOT_TOKEN_3}"
+
+# ------------------------------------------------------------
+#  Telegram control plane
+#  The manager bot is the remote control that talks to the
+#  user and dispatches commands to the agents above.
+# ------------------------------------------------------------
+telegram:
+  # --- Manager bot token(s) — LIST ---
+  # One manager bot per deployment. Leave empty to disable the
+  # Telegram control channel.
+  manager_bot_token:
+    - "${TELEGRAM_MANAGER_BOT_TOKEN_1}"
+    # - "${TELEGRAM_MANAGER_BOT_TOKEN_2}"
+
+  # --- Allowed user IDs — LIST ---
+  # Telegram numeric user IDs permitted to issue commands.
+  # Anyone not on this list is ignored.
+  # Get yours from @userinfobot.
+  allowed_user_id:
+    - 123456789
+    # - 987654321

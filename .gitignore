@@ -1,0 +1,126 @@
+# ============================================================
+#  Asuka Agent — root .gitignore
+#  This repo is PUBLIC. Keep secrets out of git, always.
+# ============================================================
+
+# ---------- Secrets & local configuration ----------
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+*.p12
+*.pfx
+secrets/
+credentials.json
+config/config.local.yaml
+config/config.local.yml
+config/*.local.yaml
+config/*.local.yml
+config/*secret*
+
+# ---------- Python ----------
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+.python-version
+
+# ---------- Test / lint / type caches ----------
+.pytest_cache/
+.pytest/
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+.cache
+.mypy_cache/
+.dmypy.json
+dmypy.json
+.pyre/
+.pytype/
+.ruff_cache/
+.tox/
+.nox/
+
+# ---------- Node / JS ----------
+node_modules/
+jspm_packages/
+web_modules/
+dist/
+build/
+.next/
+.nuxt/
+.svelte-kit/
+.astro/
+.output/
+.vercel/
+.netlify/
+*.tsbuildinfo
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.pnpm-store/
+
+# ---------- Logs & runtime output ----------
+*.log
+logs/
+tmp/
+temp/
+out/
+.output/
+*.pid
+*.seed
+*.pid.lock
+
+# ---------- Notebooks ----------
+.ipynb_checkpoints/
+*.ipynb_checkpoints
+
+# ---------- Editors / IDE ----------
+.vscode/
+!.vscode/extensions.json
+.idea/
+*.swp
+*.swo
+*~
+
+# ---------- OS ----------
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# ---------- Misc ----------
+*.bak
+*.orig
+*.rej
+.patch/
